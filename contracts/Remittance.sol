@@ -7,8 +7,11 @@ contract Remittance {
     bool serviceEnabled;
 
     //general operation
-    mapping(address => bool) exchanges;
-    mapping(bytes32 => bool) previousPasswords;
+    event ExchangeAdded (
+        address exchangeAddress
+    );
+    mapping(address => bool) public exchanges;
+    mapping(bytes32 => bool) public previousPasswords;
 
     //complex types - general operation
     struct Deposit {
@@ -38,10 +41,11 @@ contract Remittance {
     function enrollFiatExchange(address exchangeOperator) checkEnabled public {
         require(msg.sender == owner);
         exchanges[exchangeOperator] = true;
+        ExchangeAdded(exchangeOperator);
     }
 
-    function receiveRemittance(uint deadlineBlocksInFuture, bytes32 passwordHash) checkEnabled public payable {
-        if (previousPasswords[passwordHash] == false && deposits[passwordHash].extant == false) {
+    function receiveRemittance(uint deadlineBlocksInFuture, address exchangeToUse, bytes32 passwordHash) checkEnabled public payable {
+        if (exchanges[exchangeToUse] == true && previousPasswords[passwordHash] == false && deposits[passwordHash].extant == false) {
             Deposit memory newDeposit;
 
             newDeposit.originee = msg.sender;
@@ -57,13 +61,13 @@ contract Remittance {
         }
     }
 
-    function payoutRemittance(string password)  checkEnabled public payable returns (bool) {
+    function payoutRemittance(string password) checkEnabled public returns (bool) {
         bytes32 pwHash = keccak256(password);
 
         Deposit memory deposit = deposits[pwHash];
         if (deposit.extant) {
             //check reclaim first
-            if (msg.sender == deposit.originee && block.number <= deposit.deadlineBlockNumber) {
+            if (msg.sender == deposit.originee && block.number >= deposit.deadlineBlockNumber) {
                 msg.sender.transfer(deposit.amount);
                 return true;
             } else if (exchanges[msg.sender] == true) { //next check if this remittance is being paid out normally
