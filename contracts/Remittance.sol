@@ -4,7 +4,7 @@ contract Remittance {
 
     //admin-related
     address public owner;
-    bool serviceEnabled;
+    bool public isServiceEnabled;
 
     //general operation
     event ExchangeAdded (
@@ -21,21 +21,21 @@ contract Remittance {
         bytes32 passwordHash;
         bool extant;
     }
-    mapping(bytes32 => Deposit) deposits;
+    mapping(bytes32 => Deposit) public deposits;
 
     function Remittance() public {
         owner = msg.sender;
-        serviceEnabled = true;
+        isServiceEnabled = true;
     }
 
     modifier checkEnabled {
-        require(serviceEnabled);
+        require(isServiceEnabled);
         _;
     }
 
     function setEnabled(bool enabled) public returns (bool) {
         require(msg.sender == owner);
-        serviceEnabled = enabled;
+        isServiceEnabled = enabled;
     }
 
     function enrollFiatExchange(address exchangeOperator) checkEnabled public {
