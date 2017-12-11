@@ -38,27 +38,28 @@ contract Remittance {
         isServiceEnabled = enabled;
     }
 
-    function enrollFiatExchange(address exchangeOperator) checkEnabled public {
-        require(msg.sender == owner);
-        exchanges[exchangeOperator] = true;
-        ExchangeAdded(exchangeOperator);
+    function enrollFiatExchange(address exchangeOperator) checkEnabled public returns (bool) {
+        if (msg.sender == owner) {
+            exchanges[exchangeOperator] = true;
+            ExchangeAdded(exchangeOperator);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     function receiveRemittance(uint deadlineBlocksInFuture, address exchangeToUse, bytes32 passwordHash) checkEnabled public payable {
-        if (exchanges[exchangeToUse] == true && previousPasswords[passwordHash] == false && deposits[passwordHash].extant == false) {
-            Deposit memory newDeposit;
+        require(exchanges[exchangeToUse] == true && previousPasswords[passwordHash] == false && deposits[passwordHash].extant == false && msg.value > 0);
+        Deposit memory newDeposit;
 
-            newDeposit.originee = msg.sender;
-            newDeposit.amount = msg.value;
-            newDeposit.deadlineBlockNumber = block.number + deadlineBlocksInFuture;
-            newDeposit.passwordHash = passwordHash;
-            newDeposit.extant = true;
+        newDeposit.originee = msg.sender;
+        newDeposit.amount = msg.value;
+        newDeposit.deadlineBlockNumber = block.number + deadlineBlocksInFuture;
+        newDeposit.passwordHash = passwordHash;
+        newDeposit.extant = true;
 
-            deposits[passwordHash] = newDeposit;
-            previousPasswords[passwordHash] = true;
-        } else {
-            revert();
-        }
+        deposits[passwordHash] = newDeposit;
+        previousPasswords[passwordHash] = true;
     }
 
     function payoutRemittance(string password) checkEnabled public returns (bool) {
