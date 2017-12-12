@@ -102,6 +102,21 @@ contract('Remittance', function(accounts) {
         });
     });
 
+    it("should have a balance equal to the payout amounts in each deposit", function() {
+        var contract;
+
+        return Remittance.deployed().then(function(instance) {
+            contract = instance;
+            return web3.eth.getBalance(instance.address);
+        }).then(balance => {
+            var pwHash = web3.sha3("password1");
+            return contract.deposits.call(pwHash);
+        }).then(deposit => {
+            var value = web3.toWei(5, "ether");            
+            assert.equal(deposit[1], value, "Contract's balance not in agreement with stated deposits");
+        })
+    })
+
     //TODO: figure out fee system such that we can determine exactly how much of the remittance the final recipient will receive
     it("should pay out deposits with a correct password to an approved exchange", function() {
         var contract;
