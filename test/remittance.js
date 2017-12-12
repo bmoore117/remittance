@@ -48,7 +48,8 @@ contract('Remittance', function(accounts) {
         return Remittance.deployed().then(function(instance) {
             contract = instance;
             pwHash = web3.sha3("password1");
-            return contract.receiveRemittance(3, accounts[1], pwHash, {from: accounts[2], value: 10});
+            var value = web3.toWei(5, "ether");
+            return contract.receiveRemittance(3, accounts[1], pwHash, {from: accounts[2], value: value});
         }).then(txInfo => {
             return contract.deposits.call(pwHash);
         }).then(deposit => {
@@ -98,6 +99,22 @@ contract('Remittance', function(accounts) {
             return contract.deposits(pwHash);
         }).then(deposit => {
             assert.isFalse(deposit[4], false, "Deposit using a non-registered exchange created");
+        });
+    });
+
+    //TODO: figure out fee system such that we can determine exactly how much of the remittance the final recipient will receive
+    it("should pay out deposits with a correct password to an approved exchange", function() {
+        var contract;
+        var amountBeforePayout;
+        var amountAfterPayout;
+
+        return Remittance.deployed().then(function(instance) {
+            contract = instance;
+            amountBeforePayout = web3.eth.getBalance(accounts[1]);
+            return contract.payoutRemittance("password1", { from: accounts[1] });
+        }).then(txInfo => {
+            var amountAfterPayout = web3.eth.getBalance(accounts[1]);
+            assert.isTrue(amountAfterPayout - amountBeforePayout > 0, true, "Remittance not properly paid out");
         });
     });
 });

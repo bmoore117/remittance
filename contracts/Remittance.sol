@@ -21,6 +21,12 @@ contract Remittance {
         bytes32 passwordHash;
         bool extant;
     }
+    event DepositPaid(
+        uint contractInitialBalance,
+        uint amountToPay,
+        address recipient
+    );
+    
     mapping(bytes32 => Deposit) public deposits;
 
     function Remittance() public {
@@ -69,13 +75,25 @@ contract Remittance {
         if (deposit.extant) {
             //check reclaim first
             if (msg.sender == deposit.originee && block.number >= deposit.deadlineBlockNumber) {
+                clearDeposit(pwHash);
                 msg.sender.transfer(deposit.amount);
+                DepositPaid(this.balance, deposit.amount, msg.sender);
                 return true;
             } else if (exchanges[msg.sender] == true) { //next check if this remittance is being paid out normally
+                clearDeposit(pwHash);
                 msg.sender.transfer(deposit.amount);
+                DepositPaid(this.balance, deposit.amount, msg.sender);
                 return true;
             }
         }
         return false;
+    }
+
+    function clearDeposit(bytes32 pwHash) checkEnabled private {
+        deposits[pwHash].originee = 0;
+        deposits[pwHash].amount = 0;
+        deposits[pwHash].deadlineBlockNumber = 0;
+        deposits[pwHash].passwordHash = 0;
+        deposits[pwHash].extant = false;
     }
 }
