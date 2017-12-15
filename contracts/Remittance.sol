@@ -5,9 +5,12 @@ contract Remittance {
     //admin-related
     address public owner;
     bool public isServiceEnabled;
+    event LogServiceStateChanged(
+        bool newState
+    );
 
     //general operation
-    event ExchangeAdded (
+    event LogExchangeAdded (
         address exchangeAddress
     );
     mapping(address => bool) public exchanges;
@@ -17,21 +20,22 @@ contract Remittance {
     struct Deposit {
         address originee;
         uint amount;
-        uint deadlineBlockNumber;
-        bytes32 passwordHash;
-        bool extant;
+        uint reclaimByBlock;
     }
-    event DepositPaid(
-        uint contractInitialBalance,
-        uint amountToPay,
+    event LogDepositPaid(
+        uint paidAmount,
+        address recipient
+    );
+    event LogDepositReclaimed(
+        uint reclaimedAmount,
         address recipient
     );
     
     mapping(bytes32 => Deposit) public deposits;
 
-    function Remittance() public {
+    function Remittance(bool initialServiceState) public {
         owner = msg.sender;
-        isServiceEnabled = true;
+        isServiceEnabled = initialServiceState;
     }
 
     modifier checkEnabled {
@@ -42,27 +46,27 @@ contract Remittance {
     function setEnabled(bool enabled) public returns (bool) {
         require(msg.sender == owner);
         isServiceEnabled = enabled;
+        LogServiceStateChanged(isServiceEnabled);
+        return isServiceEnabled;
     }
 
     function enrollFiatExchange(address exchangeOperator) checkEnabled public returns (bool) {
         if (msg.sender == owner) {
             exchanges[exchangeOperator] = true;
-            ExchangeAdded(exchangeOperator);
+            LogExchangeAdded(exchangeOperator);
             return true;
         } else {
             return false;
         }
     }
 
-    function receiveRemittance(uint deadlineBlocksInFuture, address exchangeToUse, bytes32 passwordHash) checkEnabled public payable {
-        require(exchanges[exchangeToUse] == true && previousPasswords[passwordHash] == false && deposits[passwordHash].extant == false && msg.value > 0);
+    function receiveRemittance(uint reclaimByBlock, address exchangeToUse, bytes32 passwordHash) checkEnabled public payable {
+        require(exchanges[exchangeToUse] == true && previousPasswords[passwordHash] == false && msg.value > 0);
         Deposit memory newDeposit;
 
         newDeposit.originee = msg.sender;
         newDeposit.amount = msg.value;
-        newDeposit.deadlineBlockNumber = block.number + deadlineBlocksInFuture;
-        newDeposit.passwordHash = passwordHash;
-        newDeposit.extant = true;
+        newDeposit.reclaimByBlock = block.number + reclaimByBlock;
 
         deposits[passwordHash] = newDeposit;
         previousPasswords[passwordHash] = true;
@@ -72,17 +76,17 @@ contract Remittance {
         bytes32 pwHash = keccak256(password);
 
         Deposit memory deposit = deposits[pwHash];
-        if (deposit.extant) {
+        if (deposit.amount > 0) { //or in other words, if deposit exists
             //check reclaim first
-            if (msg.sender == deposit.originee && block.number >= deposit.deadlineBlockNumber) {
+            if (msg.sender == deposit.originee && block.number >= deposit.reclaimByBlock) {
                 clearDeposit(pwHash);
                 msg.sender.transfer(deposit.amount);
-                DepositPaid(this.balance, deposit.amount, msg.sender);
+                LogDepositReclaimed(deposit.amount, msg.sender);
                 return true;
             } else if (exchanges[msg.sender] == true) { //next check if this remittance is being paid out normally
                 clearDeposit(pwHash);
                 msg.sender.transfer(deposit.amount);
-                DepositPaid(this.balance, deposit.amount, msg.sender);
+                LogDepositPaid(deposit.amount, msg.sender);
                 return true;
             }
         }
@@ -92,8 +96,6 @@ contract Remittance {
     function clearDeposit(bytes32 pwHash) checkEnabled private {
         deposits[pwHash].originee = 0;
         deposits[pwHash].amount = 0;
-        deposits[pwHash].deadlineBlockNumber = 0;
-        deposits[pwHash].passwordHash = 0;
-        deposits[pwHash].extant = false;
+        deposits[pwHash].reclaimByBlock = 0;
     }
 }

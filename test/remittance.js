@@ -11,7 +11,7 @@ contract('Remittance', function(accounts) {
             assert.isTrue(success, "Service not enabled");
             return contract.owner.call();
         }).then(result => {
-            assert.equal(result, accounts[0], "unknown account used to deploy, accounts[0] expected");
+            assert.strictEqual(result, accounts[0], "unknown account used to deploy, accounts[0] expected");
         });
     });
 
@@ -53,7 +53,7 @@ contract('Remittance', function(accounts) {
         }).then(txInfo => {
             return contract.deposits.call(pwHash);
         }).then(deposit => {
-            assert.isTrue(deposit[4], true, "Deposit not successfully created");
+            assert.isTrue(deposit[1] > 0, true, "Deposit not successfully created");
         });
     });
 
@@ -68,7 +68,7 @@ contract('Remittance', function(accounts) {
         }).catch(txInfo => {
             return contract.deposits.call(pwHash);
         }).then(deposit => {
-            assert.isFalse(deposit[4], false, "Zero-valued deposit created");
+            assert.isFalse(deposit[1] > 0, false, "Zero-valued deposit created");
         });
     });
 
@@ -83,7 +83,7 @@ contract('Remittance', function(accounts) {
         }).catch(txInfo => {
             return contract.deposits(pwHash);
         }).then(deposit => {
-            assert.equal(accounts[2], deposit[0], "Deposit with previously seen password created");
+            assert.strictEqual(accounts[2], deposit[0], "Deposit with previously seen password created");
         });
     });
 
@@ -98,7 +98,7 @@ contract('Remittance', function(accounts) {
         }).catch(txInfo => {
             return contract.deposits(pwHash);
         }).then(deposit => {
-            assert.isFalse(deposit[4], false, "Deposit using a non-registered exchange created");
+            assert.isFalse(deposit[1] > 0, false, "Deposit using a non-registered exchange created");
         });
     });
 
@@ -107,15 +107,15 @@ contract('Remittance', function(accounts) {
 
         return Remittance.deployed().then(function(instance) {
             contract = instance;
-            return web3.eth.getBalance(instance.address);
+            return instance.getBalance();
         }).then(balance => {
             var pwHash = web3.sha3("password1");
             return contract.deposits.call(pwHash);
         }).then(deposit => {
             var value = web3.toWei(5, "ether");            
-            assert.equal(deposit[1], value, "Contract's balance not in agreement with stated deposits");
+            assert.strictEqual(deposit[1], value, "Contract's balance not in agreement with stated deposits");
         })
-    })
+    });
 
     //TODO: figure out fee system such that we can determine exactly how much of the remittance the final recipient will receive
     it("should pay out deposits with a correct password to an approved exchange", function() {
