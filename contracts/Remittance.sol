@@ -50,18 +50,14 @@ contract Remittance {
         return isServiceEnabled;
     }
 
-    function enrollFiatExchange(address exchangeOperator) checkEnabled public returns (bool) {
-        if (msg.sender == owner) {
-            exchanges[exchangeOperator] = true;
-            LogExchangeAdded(exchangeOperator);
-            return true;
-        } else {
-            return false;
-        }
+    function enrollFiatExchange(address exchangeOperator) checkEnabled public {
+        require(msg.sender == owner);
+        exchanges[exchangeOperator] = true;
+        LogExchangeAdded(exchangeOperator);
     }
 
     function receiveRemittance(uint reclaimByBlock, address exchangeToUse, bytes32 passwordHash) checkEnabled public payable {
-        require(exchanges[exchangeToUse] == true && previousPasswords[passwordHash] == false && msg.value > 0);
+        require(exchanges[exchangeToUse] && !previousPasswords[passwordHash] && msg.value > 0);
         Deposit memory newDeposit;
 
         newDeposit.originee = msg.sender;
@@ -93,7 +89,7 @@ contract Remittance {
         return false;
     }
 
-    function clearDeposit(bytes32 pwHash) checkEnabled private {
+    function clearDeposit(bytes32 pwHash) private {
         deposits[pwHash].originee = 0;
         deposits[pwHash].amount = 0;
         deposits[pwHash].reclaimByBlock = 0;

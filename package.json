@@ -1,0 +1,25 @@
+{
+  "name": "remittance",
+  "version": "1.0.0",
+  "description": "Small project for b9labs ethereum development course",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bmoore117/remittance.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bmoore117/remittance/issues"
+  },
+  "homepage": "https://github.com/bmoore117/remittance#readme"
+}
