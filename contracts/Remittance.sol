@@ -69,7 +69,7 @@ contract Remittance {
     }
 
     function payoutRemittance(string password) checkEnabled public {
-        bytes32 pwHash = keccak256(password);
+        bytes32 pwHash = getHash(password);
 
         Deposit memory deposit = deposits[pwHash];
         require(deposit.amount > 0 && exchanges[msg.sender]); //or in other words, if deposit exists
@@ -89,5 +89,12 @@ contract Remittance {
         deposits[pwHash].originee = 0;
         deposits[pwHash].amount = 0;
         deposits[pwHash].reclaimByBlock = 0;
+    }
+
+    /* 
+    Putting this here allows tests to work with the exact same hashing algorithm as the contract itself
+    */
+    function getHash(string password) checkEnabled public view returns (bytes32) {
+        return keccak256(password);
     }
 }
