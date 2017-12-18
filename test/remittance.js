@@ -154,7 +154,7 @@ contract('Remittance', function(accounts) {
                     return instance.deposits.call(pwHash);
                 }).then(deposit => {
                     // == doesn't seem to work to compare, === doesn't seem to work to compare either, so going with subtraction
-                    var result = deposit[1].minus(contractBalance);
+                    var result = deposit[2].minus(contractBalance);
                     assert.strictEqual(0, result.toNumber(), "instance's balance not in agreement with stated deposits");
                 });
             });
@@ -228,7 +228,7 @@ contract('Remittance', function(accounts) {
         });
 
         it("should not pay out deposits with a correct password to an unapproved exchange", done => {
-            var tx = instance.payoutRemittance("password1", { from: accounts[2] });
+            var tx = instance.payoutRemittance("password1", { from: accounts[3] });
 
             tx.then(txInfo => {
                 done("Expected invalid transaction to be rejected");

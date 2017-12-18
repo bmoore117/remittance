@@ -19,6 +19,7 @@ contract Remittance {
     //complex types - general operation
     struct Deposit {
         address originee;
+        address claimant;
         uint amount;
         uint reclaimByBlock;
     }
@@ -30,8 +31,9 @@ contract Remittance {
         uint reclaimedAmount,
         address recipient
     );
-    
     mapping(bytes32 => Deposit) public deposits;
+
+    /** End variables, begin code */
 
     function Remittance(bool initialServiceState) public {
         owner = msg.sender;
@@ -61,6 +63,7 @@ contract Remittance {
         Deposit memory newDeposit;
 
         newDeposit.originee = msg.sender;
+        newDeposit.claimant = exchangeToUse;
         newDeposit.amount = msg.value;
         newDeposit.reclaimByBlock = block.number + reclaimByBlock;
 
@@ -72,13 +75,13 @@ contract Remittance {
         bytes32 pwHash = getHash(password);
 
         Deposit memory deposit = deposits[pwHash];
-        require(deposit.amount > 0 && exchanges[msg.sender]); //or in other words, if deposit exists
+        require(deposit.amount > 0 && (msg.sender == deposit.originee || msg.sender == deposit.claimant));
         //check reclaim first
         if (msg.sender == deposit.originee && block.number >= deposit.reclaimByBlock) {
             clearDeposit(pwHash);
             msg.sender.transfer(deposit.amount);
             LogDepositReclaimed(deposit.amount, msg.sender);
-        } else if (exchanges[msg.sender] == true) { //next check if this remittance is being paid out normally
+        } else if (msg.sender == deposit.claimant) { //next check if this remittance is being paid out normally
             clearDeposit(pwHash);
             msg.sender.transfer(deposit.amount);
             LogDepositPaid(deposit.amount, msg.sender);
@@ -87,6 +90,7 @@ contract Remittance {
 
     function clearDeposit(bytes32 pwHash) private {
         deposits[pwHash].originee = 0;
+        deposits[pwHash].claimant = 0;
         deposits[pwHash].amount = 0;
         deposits[pwHash].reclaimByBlock = 0;
     }
