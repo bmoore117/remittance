@@ -1,5 +1,6 @@
 var p = require("bluebird");
 const getBalancePromise = p.promisify(web3.eth.getBalance);
+const getTransactionPromise = p.promisify(web3.eth.getTransaction);
 
 const Remittance = artifacts.require("./Remittance.sol");
 
@@ -163,7 +164,7 @@ contract('Remittance', function(accounts) {
     describe("withdrawing deposits", function() {
         var instance;        
 
-        before("deploy new instance", function() {
+        beforeEach("deploy new instance and prepare with deposit", function() {
             return Remittance.new(true, {from: accounts[0]})
             .then(function(_instance) {
                 instance = _instance;
@@ -190,17 +191,49 @@ contract('Remittance', function(accounts) {
 
         it("should pay out deposits with a correct password to an approved exchange", function() {
             var amountBeforePayout;
-            var amountAfterPayout;
+            var gasUsed;
+            var gasPrice;
     
-            return getBalancePromise(accounts[1]) //exchange's account
+            return getBalancePromise(accounts[1]) //exchange's initial balance
             .then(balance => {
                 amountBeforePayout = balance;
                 return instance.payoutRemittance("password1", { from: accounts[1] });
             }).then(txInfo => {
+                payoutAmount = txInfo.logs[0].args.paidAmount;
+                gasUsed = txInfo.receipt.gasUsed;                
+                return getTransactionPromise(txInfo.tx);
+            }).then(tx => {
+                gasPrice = tx.gasPrice; //gas price from web3.eth.gasPrice is incorrect, this is the real one
                 return getBalancePromise(accounts[1]);
-            }).then(balance => {
-                var amountAfterPayout = balance;
-                assert.isTrue(amountAfterPayout - amountBeforePayout > 0, "Remittance not properly paid out");
+            }).then(amountAfterPayout => {
+                var payoutLessFees = payoutAmount.minus(gasUsed*gasPrice);
+                var test = amountAfterPayout.minus(payoutLessFees);
+        
+                assert.strictEqual(test.toString(10), amountBeforePayout.toString(10), "Remittance not properly paid out");
+            });
+        });
+
+        it("should not pay out deposits with an incorrect password to an approved exchange", done => {
+            var tx = instance.payoutRemittance("password2", { from: accounts[1] });
+
+            tx.then(txInfo => {
+                done("Expected invalid transaction to be rejected");
+            });
+            
+            tx.catch(err => {
+                done();
+            });
+        });
+
+        it("should not pay out deposits with a correct password to an unapproved exchange", done => {
+            var tx = instance.payoutRemittance("password1", { from: accounts[2] });
+
+            tx.then(txInfo => {
+                done("Expected invalid transaction to be rejected");
+            });
+            
+            tx.catch(err => {
+                done();
             });
         });
     });

@@ -68,25 +68,21 @@ contract Remittance {
         previousPasswords[passwordHash] = true;
     }
 
-    function payoutRemittance(string password) checkEnabled public returns (bool) {
+    function payoutRemittance(string password) checkEnabled public {
         bytes32 pwHash = keccak256(password);
 
         Deposit memory deposit = deposits[pwHash];
-        if (deposit.amount > 0) { //or in other words, if deposit exists
-            //check reclaim first
-            if (msg.sender == deposit.originee && block.number >= deposit.reclaimByBlock) {
-                clearDeposit(pwHash);
-                msg.sender.transfer(deposit.amount);
-                LogDepositReclaimed(deposit.amount, msg.sender);
-                return true;
-            } else if (exchanges[msg.sender] == true) { //next check if this remittance is being paid out normally
-                clearDeposit(pwHash);
-                msg.sender.transfer(deposit.amount);
-                LogDepositPaid(deposit.amount, msg.sender);
-                return true;
-            }
+        require(deposit.amount > 0 && exchanges[msg.sender]); //or in other words, if deposit exists
+        //check reclaim first
+        if (msg.sender == deposit.originee && block.number >= deposit.reclaimByBlock) {
+            clearDeposit(pwHash);
+            msg.sender.transfer(deposit.amount);
+            LogDepositReclaimed(deposit.amount, msg.sender);
+        } else if (exchanges[msg.sender] == true) { //next check if this remittance is being paid out normally
+            clearDeposit(pwHash);
+            msg.sender.transfer(deposit.amount);
+            LogDepositPaid(deposit.amount, msg.sender);
         }
-        return false;
     }
 
     function clearDeposit(bytes32 pwHash) private {
