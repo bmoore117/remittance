@@ -79,12 +79,12 @@ contract Remittance {
         //check reclaim first
         if (msg.sender == deposit.originee && block.number >= deposit.reclaimByBlock) {
             clearDeposit(pwHash);
-            msg.sender.transfer(deposit.amount);
             LogDepositReclaimed(deposit.amount, msg.sender);
-        } else if (msg.sender == deposit.claimant) { //next check if this remittance is being paid out normally
-            clearDeposit(pwHash);
             msg.sender.transfer(deposit.amount);
+        } else { //msg.sender == deposit.claimant - all other conditions have been checked
+            clearDeposit(pwHash);
             LogDepositPaid(deposit.amount, msg.sender);
+            msg.sender.transfer(deposit.amount);
         }
     }
 
